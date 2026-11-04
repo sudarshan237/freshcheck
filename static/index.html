@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="FreshCheck compares an AI answer with current web evidence.">
+  <title>FreshCheck — Is this answer still current?</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1020; --panel:#121b31; --line:#283754; --text:#edf3ff; --muted:#9baac4; --cyan:#57d8d0; --green:#7be0ad; --amber:#ffcb77; --red:#ff8e8e; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 85% 0%,#182c4b 0,transparent 32%),var(--bg); color:var(--text); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    .shell { width:min(1080px,calc(100% - 36px)); margin:0 auto; padding:42px 0 64px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:64px; }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:-.04em; font-size:21px; }
+    .logo { display:grid; place-items:center; width:38px; height:38px; border-radius:12px; background:var(--cyan); color:#071321; font-weight:900; }
+    .tag { color:var(--muted); border:1px solid var(--line); border-radius:99px; padding:8px 12px; font-size:12px; }
+    .hero { max-width:780px; margin-bottom:34px; }
+    .eyebrow { color:var(--cyan); text-transform:uppercase; letter-spacing:.15em; font-size:11px; font-weight:800; }
+    h1 { font-size:clamp(36px,6vw,62px); letter-spacing:-.055em; line-height:1.02; margin:14px 0 18px; }
+    .hero p { color:var(--muted); line-height:1.7; font-size:16px; max-width:690px; }
+    .layout { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr); gap:20px; align-items:start; }
+    .panel { background:rgba(18,27,49,.94); border:1px solid var(--line); border-radius:20px; padding:24px; box-shadow:0 18px 60px rgba(0,0,0,.18); }
+    label { display:block; font-size:13px; font-weight:700; margin:0 0 9px; }
+    .hint { color:var(--muted); font-size:12px; line-height:1.5; margin:-3px 0 12px; }
+    textarea,input { display:block; width:100%; color:var(--text); background:#0c1427; border:1px solid #31415f; border-radius:12px; padding:13px 14px; font:inherit; outline:none; transition:border .15s,box-shadow .15s; }
+    textarea { min-height:190px; resize:vertical; line-height:1.55; }
+    textarea:focus,input:focus { border-color:var(--cyan); box-shadow:0 0 0 3px rgba(87,216,208,.12); }
+    .field { margin-bottom:20px; }
+    button { border:0; border-radius:12px; padding:14px 18px; width:100%; background:var(--cyan); color:#071321; font-weight:850; font-size:14px; cursor:pointer; transition:transform .15s,opacity .15s; }
+    button:hover { transform:translateY(-1px); }
+    button:disabled { cursor:wait; opacity:.6; transform:none; }
+    .smallprint { color:var(--muted); font-size:11px; line-height:1.55; margin:12px 2px 0; }
+    .side-title { font-weight:800; font-size:15px; margin:0 0 18px; }
+    .how { display:grid; gap:16px; }
+    .step { display:grid; grid-template-columns:30px 1fr; gap:12px; }
+    .num { display:grid; place-items:center; height:28px; width:28px; border-radius:9px; background:#203653; color:var(--cyan); font-size:12px; font-weight:800; }
+    .step strong { display:block; font-size:13px; margin:1px 0 4px; }
+    .step span { display:block; color:var(--muted); font-size:12px; line-height:1.5; }
+    .result { display:none; margin-top:22px; }
+    .result.visible { display:block; }
+    .result-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:15px; }
+    .result-head h2 { margin:0; font-size:20px; }
+    .status { padding:8px 11px; border-radius:99px; font-size:12px; font-weight:800; background:#26334a; }
+    .status.success { color:var(--green); background:rgba(123,224,173,.1); }
+    .status.warning { color:var(--amber); background:rgba(255,203,119,.1); }
+    .status.neutral { color:#c7d4e8; }
+    .reason { color:var(--muted); line-height:1.6; font-size:13px; margin:0 0 17px; }
+    .metric { border:1px solid var(--line); border-radius:12px; padding:13px 14px; margin:0 0 18px; }
+    .metric-row { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12px; color:var(--muted); margin-bottom:9px; }
+    .metric-row strong { color:var(--text); font-size:13px; }
+    .bar { height:7px; background:#26334a; border-radius:99px; overflow:hidden; }
+    .bar > span { display:block; height:100%; width:0; background:var(--cyan); border-radius:99px; }
+    .summary { background:#0c1427; border:1px solid var(--line); border-radius:12px; padding:15px; margin-bottom:18px; }
+    .summary h3,.sources h3 { margin:0 0 9px; font-size:13px; }
+    .summary p { color:#c5d1e4; font-size:13px; line-height:1.6; margin:0; white-space:pre-wrap; }
+    .source { border-top:1px solid var(--line); padding:14px 0; }
+    .source a { color:var(--cyan); text-decoration:none; font-weight:700; font-size:13px; line-height:1.45; }
+    .source a:hover { text-decoration:underline; }
+    .source-meta { color:var(--muted); font-size:11px; margin-top:5px; }
+    .source p { color:#bac8dc; font-size:12px; line-height:1.55; margin:8px 0 0; }
+    .disclaimer { color:var(--amber); font-size:11px; line-height:1.6; border-top:1px solid var(--line); padding-top:14px; margin-top:10px; }
+    .error { color:var(--red); font-size:13px; line-height:1.5; margin-top:12px; display:none; }
+    footer { text-align:center; color:#73839e; font-size:11px; margin-top:38px; line-height:1.7; }
+    @media (max-width:780px) { .shell{padding-top:24px} header{margin-bottom:42px} .layout{grid-template-columns:1fr} .tag{display:none} .panel{padding:19px} }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand"><div class="logo">F</div><span>FreshCheck</span></div>
+      <div class="tag">Tavily-powered research prototype</div>
+    </header>
+    <section class="hero">
+      <div class="eyebrow">Answer freshness checker</div>
+      <h1>Is this answer still <span style="color:var(--cyan)">current?</span></h1>
+      <p>Paste an AI-generated answer and search for the latest evidence. FreshCheck puts the answer beside live web results so you can spot possible mismatches before relying on it.</p>
+    </section>
+    <section class="layout">
+      <div class="panel">
+        <form id="check-form">
+          <div class="field">
+            <label for="answer">Answer to check</label>
+            <p class="hint">Paste the factual answer you want to review. Avoid confidential information.</p>
+            <textarea id="answer" minlength="20" maxlength="8000" required placeholder="Example: Python 3.10 is the latest stable Python release."></textarea>
+          </div>
+          <div class="field">
+            <label for="query">What should we search for?</label>
+            <p class="hint">Use a focused topic or claim. Example: latest stable Python release.</p>
+            <input id="query" maxlength="300" placeholder="Enter a search query">
+          </div>
+          <button id="submit-button" type="submit">Check against current web evidence</button>
+          <div class="error" id="error" role="alert"></div>
+          <p class="smallprint">Your answer is sent to the FreshCheck server only for this check. This prototype does not save it to a database.</p>
+        </form>
+      </div>
+      <aside class="panel">
+        <h2 class="side-title">How FreshCheck works</h2>
+        <div class="how">
+          <div class="step"><div class="num">01</div><div><strong>Paste an answer</strong><span>Start with any factual answer that may have become outdated.</span></div></div>
+          <div class="step"><div class="num">02</div><div><strong>Retrieve fresh evidence</strong><span>Tavily searches the web and returns a current summary with source links.</span></div></div>
+          <div class="step"><div class="num">03</div><div><strong>Review the signal</strong><span>A simple text-overlap heuristic flags possible mismatches for human review.</span></div></div>
+        </div>
+        <p class="smallprint" style="margin-top:22px">A screening signal is not a proof of truth. Always inspect the sources.</p>
+      </aside>
+    </section>
+    <section class="panel result" id="result" aria-live="polite">
+      <div class="result-head"><h2>Freshness report</h2><span class="status neutral" id="verdict">Waiting</span></div>
+      <p class="reason" id="reason"></p>
+      <div class="metric">
+        <div class="metric-row"><span>Keyword overlap with retrieved evidence</span><strong id="score">—</strong></div>
+        <div class="bar"><span id="score-bar"></span></div>
+      </div>
+      <div class="summary"><h3>Current web summary</h3><p id="current-summary"></p></div>
+      <div class="sources"><h3>Sources retrieved by Tavily</h3><div id="source-list"></div></div>
+      <p class="smallprint" id="checked-at"></p>
+      <p class="disclaimer" id="disclaimer"></p>
+    </section>
+    <footer>FreshCheck · Global AI Hackathon · Primary challenge: Stale-Answer Detector<br>Prototype status: heuristic screening; evidence must be reviewed by a person.</footer>
+  </main>
+  <script>
+    const form = document.getElementById("check-form");
+    const submitButton = document.getElementById("submit-button");
+    const errorBox = document.getElementById("error");
+    const resultBox = document.getElementById("result");
+
+    function addSource(source, container) {
+      const item = document.createElement("article");
+      item.className = "source";
+      const link = document.createElement("a");
+      link.href = source.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = source.title || "Untitled source";
+      const meta = document.createElement("div");
+      meta.className = "source-meta";
+      const dateText = source.published_date ? String(source.published_date) : "Publication date not provided";
+      const scoreText = typeof source.score === "number" ? " · relevance " + source.score.toFixed(2) : "";
+      meta.textContent = dateText + scoreText;
+      const snippet = document.createElement("p");
+      snippet.textContent = source.snippet || "No snippet was provided.";
+      item.append(link, meta, snippet);
+      container.appendChild(item);
+    }
+
+    form.addEventListener("submit", async function(event) {
+      event.preventDefault();
+      errorBox.style.display = "none";
+      resultBox.classList.remove("visible");
+      submitButton.disabled = true;
+      submitButton.textContent = "Searching current sources…";
+      try {
+        const response = await fetch("/api/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            answer: document.getElementById("answer").value,
+            query: document.getElementById("query").value
+          })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "The check failed. Please try again.");
+
+        const verdict = document.getElementById("verdict");
+        verdict.textContent = data.verdict;
+        verdict.className = "status " + (data.tone || "neutral");
+        document.getElementById("reason").textContent = data.reason;
+        const percent = Math.round((data.overlap_score || 0) * 100);
+        document.getElementById("score").textContent = percent + "%";
+        document.getElementById("score-bar").style.width = percent + "%";
+        document.getElementById("current-summary").textContent = data.current_summary;
+        document.getElementById("checked-at").textContent =
+          "Search query: " + data.search_query + " · Checked at: " + new Date(data.checked_at).toLocaleString();
+        document.getElementById("disclaimer").textContent = data.disclaimer;
+
+        const sourceList = document.getElementById("source-list");
+        sourceList.replaceChildren();
+        if (data.sources && data.sources.length) {
+          data.sources.forEach(function(source) { addSource(source, sourceList); });
+        } else {
+          const empty = document.createElement("p");
+          empty.className = "smallprint";
+          empty.textContent = "No source links were returned for this query.";
+          sourceList.appendChild(empty);
+        }
+        resultBox.classList.add("visible");
+        resultBox.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (error) {
+        errorBox.textContent = error.message || "Something went wrong.";
+        errorBox.style.display = "block";
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Check against current web evidence";
+      }
+    });
+  </script>
+</body>
+</html>
